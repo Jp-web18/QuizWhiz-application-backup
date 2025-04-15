@@ -16,6 +16,7 @@
 #include <time.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <windows.h>
 
 
 /* DEVELOPER HEADEARS */
@@ -43,6 +44,7 @@ void xor_encrypt_decrypt(char *data, size_t length, char key);  // ✅ Updated d
 #define COLOR_MAGENTA "\033[35m"
 #define COLOR_CYAN    "\033[36m"
 #define COLOR_WHITE   "\033[37m"
+#define COLOR_LIGHT_PURPLE "\033[95m"
 
 // ANSI escape codes for bright/bold text colors
 #define BOLD_BLACK   "\033[1;30m"

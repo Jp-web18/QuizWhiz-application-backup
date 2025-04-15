@@ -1,14 +1,14 @@
 #include "config.h"
 
 
-
-
 void view_take_quizzes() {
-    system(CLEAR);
-
     DIR *d;
     struct dirent *dir;
     int quiz_count = 0;
+
+retry_input:
+    system(CLEAR);
+    quiz_count = 0;
 
     d = opendir("quizzes");
     if (d) {
@@ -23,48 +23,98 @@ void view_take_quizzes() {
 
     if (quiz_count == 0) {
         printf("No quizzes made yet.\n");
+#ifdef _WIN32
+        Sleep(2000);
+#else
         sleep(2);
+#endif
         return;
     }
 
+    char input[10];
     int choice;
     printf("\n[1] Take a quiz\n[2] Back to main menu\nEnter your choice: ");
-    scanf("%d", &choice);
-    getchar(); // Clear the newline character from the input buffer
+
+    if (fgets(input, sizeof(input), stdin) == NULL || input[0] == '\n') {
+        printf("%sInvalid input. Please press 1 or 2.%s\n", COLOR_RED, COLOR_RESET);
+#ifdef _WIN32
+        Sleep(1000);
+#else
+        sleep(1);
+#endif
+        goto retry_input;
+    }
+
+    char* endptr;
+    choice = strtol(input, &endptr, 10);
+    if (*endptr != '\n' || (choice != 1 && choice != 2)) {
+        printf("%sInvalid input. Please enter a valid option.%s\n", COLOR_RED, COLOR_RESET);
+#ifdef _WIN32
+        Sleep(1000);
+#else
+        sleep(1);
+#endif
+        goto retry_input;
+    }
 
     if (choice == 1) {
         take_quiz();
     }
 }
 
+
+
+
 void take_quiz() {
-    char filename[100];
-    char student_name[100];
-    char section[20];
-    char pc_number[10];
-    char quizname[100];
-    char submission_date[11];
+    DIR *d;
+    struct dirent *dir;
+    char *quiz_files[100];
+    int quiz_count = 0;
 
-    printf("Enter quiz filename (without .quiz): ");
-    scanf("%s", quizname);
-    getchar(); // Clear the newline character from the input buffer
-
-    snprintf(filename, sizeof(filename), "quizzes/%s.quiz", quizname);
-
-    if (!file_exists(filename)) {
-        printf("Quiz not found.\n");
+    d = opendir("quizzes");
+    if (!d) {
+        printf("Quiz directory not found.\n");
         sleep(2);
         return;
     }
 
-    char record_file[128];
-    snprintf(record_file, sizeof(record_file), "records/%s_%s.rec", quizname, getenv("USER"));
+    printf("Available Quizzes:\n\n");
+    while ((dir = readdir(d)) != NULL) {
+        if (strstr(dir->d_name, ".quiz")) {
+            printf("[%d] %s\n", ++quiz_count, dir->d_name);
+            quiz_files[quiz_count - 1] = strdup(dir->d_name);
+        }
+    }
+    closedir(d);
 
-    if (file_exists(record_file)) {
-        printf("You have already taken this quiz. Not allowed to take twice.\n");
+    if (quiz_count == 0) {
+        printf("No quizzes available.\n");
         sleep(2);
         return;
     }
+
+    char input[16];
+    int selection = -1;
+    while (1) {
+        printf("\nEnter the number of the quiz you want to take: ");
+        if (!fgets(input, sizeof(input), stdin) || input[0] == '\n') {
+            printf("%sInvalid input.%s\n", COLOR_RED, COLOR_RESET);
+            continue;
+        }
+
+        char *endptr;
+        selection = strtol(input, &endptr, 10);
+        if (*endptr != '\n' || selection < 1 || selection > quiz_count) {
+            printf("%sPlease enter a valid quiz number.%s\n", COLOR_RED, COLOR_RESET);
+            continue;
+        }
+
+        break;
+    }
+
+    const char *selected_quiz = quiz_files[selection - 1];
+    char filename[128];
+    snprintf(filename, sizeof(filename), "quizzes/%s", selected_quiz);
 
     FILE *fp = fopen(filename, "r");
     if (!fp) {
@@ -73,32 +123,79 @@ void take_quiz() {
     }
 
     int duration, items, score = 0;
-    char correct_answers[100];
-    char user_answers[100];
-
+    char correct_answers[100], user_answers[100];
     fscanf(fp, "%d\n%d\n%s", &duration, &items, correct_answers);
     fclose(fp);
 
     printf("Time Duration: %d minutes\n", duration);
-    printf("Enter your name: ");
-    scanf(" %[^\n]", student_name);
-    printf("Enter your section code: ");
-    scanf("%s", section);
-    printf("Enter your PC number: ");
-    scanf("%s", pc_number);
 
-    getchar(); // Clear the newline character from the input buffer
+    char student_name[100], section[20], pc_number[10], submission_date[11];
+
+    printf("Enter your name: ");
+    fgets(student_name, sizeof(student_name), stdin);
+    student_name[strcspn(student_name, "\n")] = '\0';
+
+    printf("Enter your section code: ");
+    fgets(section, sizeof(section), stdin);
+    section[strcspn(section, "\n")] = '\0';
+
+    printf("Enter your PC number: ");
+    fgets(pc_number, sizeof(pc_number), stdin);
+    pc_number[strcspn(pc_number, "\n")] = '\0';
+
+    char record_file[128];
+    snprintf(record_file, sizeof(record_file), "records/%s_%s.rec", selected_quiz, student_name);
+
+    if (file_exists(record_file)) {
+        printf("You have already taken this quiz with the same name. Not allowed to take twice.\n");
+        sleep(2);
+        return;
+    }
+
+    printf("The quiz will start now. You have %d minutes to complete it.\n", duration);
+    printf("Press ENTER to begin...");
+    fgets(input, sizeof(input), stdin);
+
+    time_t start_time = time(NULL);
+    time_t end_time = start_time + (duration * 60);
 
     for (int i = 0; i < items; i++) {
+        time_t current_time = time(NULL);
+        if (current_time >= end_time) {
+            printf("\nTime is up! Submitting your answers...\n");
+            break;
+        }
+
         printf("Question #%d answer: ", i + 1);
-        scanf(" %c", &user_answers[i]);
+        char ans_input[4];
+        fgets(ans_input, sizeof(ans_input), stdin);
+        user_answers[i] = ans_input[0];
     }
     user_answers[items] = '\0';
 
-    printf("Are you finish answering the quiz? [1] Yes [2] No: ");
-    int done;
-    scanf("%d", &done);
-    if (done != 1) return;
+    if (time(NULL) >= end_time) {
+        printf("\nTime is up! Your quiz has been automatically submitted.\n");
+    } else {
+        int confirmed = 0;
+        while (1) {
+            printf("Are you finished answering the quiz? [1] Yes [2] No: ");
+            if (!fgets(input, sizeof(input), stdin) || input[0] == '\n') {
+                printf("%sInvalid input.%s\n", COLOR_RED, COLOR_RESET);
+                continue;
+            }
+
+            char *endptr;
+            confirmed = strtol(input, &endptr, 10);
+            if (*endptr != '\n' || (confirmed != 1 && confirmed != 2)) {
+                printf("%sPlease enter 1 for Yes or 2 for No.%s\n", COLOR_RED, COLOR_RESET);
+                continue;
+            }
+
+            break;
+        }
+
+        if (confirmed != 1) return;
+    }
 
     for (int i = 0; i < items; i++) {
         if (user_answers[i] == correct_answers[i]) score++;
@@ -106,23 +203,22 @@ void take_quiz() {
 
     float percentage = ((float)score / items) * 100;
 
-    // Get the current date
     time_t t = time(NULL);
     struct tm tm = *localtime(&t);
     strftime(submission_date, sizeof(submission_date), "%m/%d/%Y", &tm);
 
-    // Save the result to a record file, aligning with view_student_data
     FILE *rec = fopen(record_file, "w");
     fprintf(rec, "Name: %s\n", student_name);
     fprintf(rec, "Section: %s\n", section);
     fprintf(rec, "PC: %s\n", pc_number);
-    fprintf(rec, "Score: %d/%d %s\n", score, items, submission_date); // Combined score and date
+    fprintf(rec, "Score: %d/%d %s\n", score, items, submission_date);
     fprintf(rec, "Percent: %.2f%%\n", percentage);
     fprintf(rec, "Answers: %s\n", user_answers);
     fprintf(rec, "Correct: %s\n", correct_answers);
     fclose(rec);
-    chmod(record_file, 0444); // Make the record file read-only
+    chmod(record_file, 0444);
 
     printf("Quiz submitted. Score: %d/%d (%.2f%%) on %s\n", score, items, percentage, submission_date);
-    sleep(2);
+    printf("\nPress ENTER to return to the main menu...");
+    fgets(input, sizeof(input), stdin); // Wait for ENTER
 }

@@ -111,7 +111,7 @@ void change_pin() {
             set_file_permissions(PIN_FILE, 0600);
             printf("%sPIN changed and encrypted.%s\n", COLOR_GREEN, COLOR_RESET);
 #else
-            printf("%sPIN changed successfully (basic XOR).%s\n", COLOR_GREEN, COLOR_RESET);
+            printf("%sPIN changed successfully.%s\n", COLOR_GREEN, COLOR_RESET);
 #endif
         } else {
             printf("%sFailed to write PIN file.%s\n", COLOR_RED, COLOR_RESET);
@@ -125,7 +125,7 @@ void change_pin() {
 
 /* CREATE NEW QUIZ */
 void create_new_quiz() {
-    char filename[100], correct_answers[100], input[100];
+    char filename[100], input[100];
     int num_items, duration;
 
     printf("Enter quiz file name: ");
@@ -166,13 +166,22 @@ void create_new_quiz() {
     if (!fgets(input, sizeof(input), stdin)) return;
     num_items = atoi(input);
 
-    printf("Enter correct answers (no spaces, %d characters): ", num_items);
-    if (!fgets(correct_answers, sizeof(correct_answers), stdin)) return;
-    correct_answers[strcspn(correct_answers, "\n")] = '\0';
-
-    if ((int)strlen(correct_answers) != num_items) {
-        printf("Mismatch: number of answers must equal number of items.\n");
+    if (num_items <= 0) {
+        printf("Invalid number of items.\n");
         return;
+    }
+
+    char correct_answers[num_items]; // Array to store all answers
+    for (int i = 0; i < num_items; i++) {
+        printf("Enter answer for item %d: ", i + 1);
+        if (!fgets(input, sizeof(input), stdin)) return;
+        input[strcspn(input, "\n")] = '\0'; // Remove newline
+        if (strlen(input) != 1) {
+            printf("Invalid input. Each answer must be a single character.\n");
+            i--; // Retry the current item
+            continue;
+        }
+        correct_answers[i] = input[0]; // Store the single character answer
     }
 
     FILE *fp = fopen(full_filename, "w");
@@ -181,7 +190,11 @@ void create_new_quiz() {
         return;
     }
 
-    fprintf(fp, "%d\n%d\n%s\n", duration, num_items, correct_answers);
+    fprintf(fp, "%d\n%d\n", duration, num_items);
+    for (int i = 0; i < num_items; i++) {
+        fprintf(fp, "%c", correct_answers[i]);
+    }
+    fprintf(fp, "\n");
     fclose(fp);
 
     printf("Save quiz?\n[1] Yes\n[2] No\nChoice: ");
@@ -226,13 +239,19 @@ void edit_existing_quiz() {
         return;
     }
 
-    printf("Enter the number of the quiz to edit or delete: ");
-    if (scanf("%d", &choice) != 1 || choice < 1 || choice > file_count) {
+    printf("Enter the number of the quiz to edit or delete (or 0 to cancel): ");
+    if (scanf("%d", &choice) != 1 || choice < 0 || choice > file_count) {
         printf("%sInvalid choice.%s\n", COLOR_RED, COLOR_RESET);
         sleep(1);
         return;
     }
     getchar(); // Consume leftover newline
+
+    if (choice == 0) {
+        printf("Operation canceled.\n");
+        sleep(1);
+        return;
+    }
 
     char *selected_file = filenames[choice - 1];
     char input[100], correct_answers[100];
@@ -270,7 +289,10 @@ void edit_existing_quiz() {
 
     printf("Current duration: %d minutes\n", duration);
     printf("Current number of items: %d\n", num_items);
-    printf("Current correct answers: %s\n", correct_answers);
+    printf("Current correct answers:\n");
+    for (int i = 0; i < num_items; i++) {
+        printf("Item %d: %c\n", i + 1, correct_answers[i]);
+    }
 
     printf("Enter new time duration (minutes) or press Enter to keep current: ");
     if (fgets(input, sizeof(input), stdin) && input[0] != '\n') {
