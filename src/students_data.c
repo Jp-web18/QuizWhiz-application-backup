@@ -66,7 +66,6 @@ void view_student_data() {
     int attempts = 0;
     char entered_pin[MAX_PIN_LENGTH];
     char stored_pin[MAX_PIN_LENGTH];
-    // char encryption_key = 0xAB;
     char encryption_key = 'K';
     FILE *pin_file;
 
@@ -128,8 +127,8 @@ void view_student_data() {
         return;
     }
 
-    printf("%-20s %-20s %-10s %-10s\n", "Student Name", "Quiz Name", "Score", "Date");
-    printf("-------------------- -------------------- ---------- ----------\n");
+    printf("%-20s %-20s %-10s %-10s %-15s\n", "Student Name", "Quiz Name", "Score", "Date", "Section");
+    printf("-------------------- -------------------- ---------- ---------- ---------------\n");
 
     while ((dir = readdir(d)) != NULL) {
         if (strstr(dir->d_name, ".rec")) {
@@ -156,7 +155,7 @@ void view_student_data() {
             sscanf(dir->d_name, "%[^_]", quiz);
             snprintf(score_str, sizeof(score_str), "%d/%d", score_val, total_items);
 
-            printf("%-20s %-20s %-10s %-10s\n", name, quiz, score_str, file_date);
+            printf("%-20s %-20s %-10s %-10s %-15s\n", name, quiz, score_str, file_date, section);
             fclose(fp);
         }
     }

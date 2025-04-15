@@ -1,11 +1,35 @@
 #include "config.h"
 
-// void xor_encrypt_decrypt(char *data, size_t length, char key) {
-//     for (size_t i = 0; i < length; i++) {
-//         data[i] ^= key;
-//     }
-// }
+void make_quiz_menu() {
+    if (!login_make_quiz()) return;
 
+    int choice;
+    char input[10];
+
+    while (1) {
+        system(CLEAR);
+        printf("%sMake a quiz%s\n\n%s", COLOR_YELLOW, COLOR_RESET, COLOR_BLUE);
+        printf("[1] Make another quiz\n[2] Edit existing quizzes\n[3] Change PIN\n[4] Back to main menu\n\n%s", COLOR_RESET);
+        printf("Enter your choice: %s", COLOR_CYAN);
+
+        if (fgets(input, sizeof(input), stdin)) {
+            choice = atoi(input);
+            printf("%s", COLOR_RESET);
+
+            switch (choice) {
+                case 1: create_new_quiz(); break;
+                case 2: edit_existing_quiz(); break;
+                case 3: change_pin(); break;
+                case 4: return;
+                default:
+                    printf("%sInvalid choice. Try again.%s\n", COLOR_RED, COLOR_RESET);
+                    sleep(1);
+            }
+        }
+    }
+}
+
+/* LOGIN FOR MAKING A TEST */
 int login_make_quiz() {
     int attempts = 0;
     char entered_pin[MAX_PIN_LENGTH], stored_pin_encrypted[MAX_PIN_LENGTH], stored_pin[MAX_PIN_LENGTH];
@@ -68,6 +92,8 @@ int login_make_quiz() {
     return 0;
 }
 
+
+/* CHANGE PIN */
 void change_pin() {
     char new_pin[MAX_PIN_LENGTH];
     char encryption_key = 'K';
@@ -96,6 +122,8 @@ void change_pin() {
     sleep(1);
 }
 
+
+/* CREATE NEW QUIZ */
 void create_new_quiz() {
     char filename[100], correct_answers[100], input[100];
     int num_items, duration;
@@ -167,6 +195,8 @@ void create_new_quiz() {
     sleep(1);
 }
 
+
+/* EDIT EXISTING QUIZ */
 void edit_existing_quiz() {
     DIR *dir;
     struct dirent *entry;
@@ -275,33 +305,4 @@ void edit_existing_quiz() {
 
     printf("Quiz updated successfully.\n");
     sleep(1);
-}
-
-void make_quiz_menu() {
-    if (!login_make_quiz()) return;
-
-    int choice;
-    char input[10];
-
-    while (1) {
-        system(CLEAR);
-        printf("%sMake a quiz%s\n\n%s", COLOR_YELLOW, COLOR_RESET, COLOR_BLUE);
-        printf("[1] Make another quiz\n[2] Edit existing quizzes\n[3] Change PIN\n[4] Back to main menu\n\n%s", COLOR_RESET);
-        printf("Enter your choice: %s", COLOR_CYAN);
-
-        if (fgets(input, sizeof(input), stdin)) {
-            choice = atoi(input);
-            printf("%s", COLOR_RESET);
-
-            switch (choice) {
-                case 1: create_new_quiz(); break;
-                case 2: edit_existing_quiz(); break;
-                case 3: change_pin(); break;
-                case 4: return;
-                default:
-                    printf("%sInvalid choice. Try again.%s\n", COLOR_RED, COLOR_RESET);
-                    sleep(1);
-            }
-        }
-    }
 }
