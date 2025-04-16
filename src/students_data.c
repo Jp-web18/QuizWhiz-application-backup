@@ -86,8 +86,8 @@ void view_student_data() {
         sleep(2);
     }
 
-    printf("%sStudent Data%s\n\n", COLOR_YELLOW, COLOR_RESET);
     while (attempts < MAX_LOGIN_ATTEMPTS) {
+        printf("%sStudent Data%s\n\n", COLOR_YELLOW, COLOR_RESET);
         printf("Enter PIN to view student data: ");
         if (fgets(entered_pin, MAX_PIN_LENGTH, stdin) != NULL) {
             size_t len = strlen(entered_pin);
@@ -99,8 +99,11 @@ void view_student_data() {
                 break;
             } else {
                 attempts++;
-                printf("Incorrect PIN. Attempts remaining: %d\n", MAX_LOGIN_ATTEMPTS - attempts);
-                sleep(1);
+                printf("%sIncorrect PIN. Attempts remaining: %d%s\n", COLOR_RED, MAX_LOGIN_ATTEMPTS - attempts, COLOR_RESET);
+                if (attempts >= MAX_LOGIN_ATTEMPTS) {
+                    printf("%sToo many failed login attempts. Returning to main menu.%s\n", COLOR_RED, COLOR_RESET);
+                }
+                sleep(2);
                 system(CLEAR);
             }
         } else {
@@ -112,8 +115,6 @@ void view_student_data() {
     }
 
     if (attempts >= MAX_LOGIN_ATTEMPTS && stored_pin[0] != '\0') {
-        printf("Too many failed login attempts. Returning to main menu.\n");
-        sleep(2);
         return;
     }
 
@@ -127,7 +128,12 @@ void view_student_data() {
         return;
     }
 
-    printf("%-20s %-20s %-10s %-10s %-15s\n", "Student Name", "Quiz Name", "Score", "Date", "Section");
+    printf("%s%-20s%s %s%-20s%s %s%-10s%s %-10s %s%-15s%s\n", 
+           COLOR_YELLOW, "Student Name", COLOR_RESET, 
+           COLOR_MAGENTA, "Quiz Name", COLOR_RESET, 
+           COLOR_BLUE, "Score", COLOR_RESET, 
+           "Date", 
+           COLOR_GREEN, "Section", COLOR_RESET);
     printf("-------------------- -------------------- ---------- ---------- ---------------\n");
 
     while ((dir = readdir(d)) != NULL) {
@@ -156,6 +162,7 @@ void view_student_data() {
             snprintf(score_str, sizeof(score_str), "%d/%d", score_val, total_items);
 
             printf("%-20s %-20s %-10s %-10s %-15s\n", name, quiz, score_str, file_date, section);
+            // printf("%s%-20s%s %-20s %s%-10s%s %-10s %-15s\n", COLOR_YELLOW, name, COLOR_RESET, quiz, COLOR_BLUE, score_str, COLOR_RESET, file_date, section);
             fclose(fp);
         }
     }
