@@ -1,5 +1,5 @@
 #include "config.h"
-
+#include <sys/stat.h> // For file modification time
 
 int login() {
     char input_pin[MAX_PIN_LENGTH];
@@ -128,6 +128,45 @@ void view_student_data() {
         return;
     }
 
+    struct {
+        char filepath[256];
+        time_t mod_time;
+    } records[100];
+    int record_count = 0;
+
+    while ((dir = readdir(d)) != NULL) {
+        if (strstr(dir->d_name, ".rec")) {
+            snprintf(records[record_count].filepath, sizeof(records[record_count].filepath), "records/%s", dir->d_name);
+
+            struct stat file_stat;
+            if (stat(records[record_count].filepath, &file_stat) == 0) {
+                records[record_count].mod_time = file_stat.st_mtime;
+                record_count++;
+            }
+        }
+    }
+    closedir(d);
+
+    // Sort records by modification time (latest first)
+    for (int i = 0; i < record_count - 1; i++) {
+        for (int j = i + 1; j < record_count; j++) {
+            if (records[i].mod_time < records[j].mod_time) {
+                // Swap records
+                char temp_filepath[256];
+                time_t temp_mod_time;
+
+                strcpy(temp_filepath, records[i].filepath);
+                temp_mod_time = records[i].mod_time;
+
+                strcpy(records[i].filepath, records[j].filepath);
+                records[i].mod_time = records[j].mod_time;
+
+                strcpy(records[j].filepath, temp_filepath);
+                records[j].mod_time = temp_mod_time;
+            }
+        }
+    }
+
     printf("%s%-20s%s %s%-20s%s %s%-10s%s %-10s %s%-15s%s\n", 
            COLOR_YELLOW, "Student Name", COLOR_RESET, 
            COLOR_MAGENTA, "Quiz Name", COLOR_RESET, 
@@ -136,38 +175,31 @@ void view_student_data() {
            COLOR_GREEN, "Section", COLOR_RESET);
     printf("-------------------- -------------------- ---------- ---------- ---------------\n");
 
-    while ((dir = readdir(d)) != NULL) {
-        if (strstr(dir->d_name, ".rec")) {
-            char filepath[256];
-            snprintf(filepath, sizeof(filepath), "records/%s", dir->d_name);
-            FILE *fp = fopen(filepath, "r");
+    for (int i = 0; i < record_count; i++) {
+        FILE *fp = fopen(records[i].filepath, "r");
+        if (!fp) continue;
 
-            if (!fp) continue;
+        char line[100];
+        char name[100] = "";
+        char section[50] = "";
+        char pc[50] = "";
+        char score_str[20] = "";
+        char file_date[11] = "";
+        char quiz[50] = "";
+        int score_val, total_items;
 
-            char line[100];
-            char name[100] = "";
-            char section[50] = "";
-            char pc[50] = "";
-            char score_str[20] = "";
-            char file_date[11] = "";
-            char quiz[50] = "";
-            int score_val, total_items;
+        if (fgets(line, sizeof(line), fp)) sscanf(line, "Name: %99[^\n]", name);
+        if (fgets(line, sizeof(line), fp)) sscanf(line, "Section: %49[^\n]", section);
+        if (fgets(line, sizeof(line), fp)) sscanf(line, "PC: %49[^\n]", pc);
+        if (fgets(line, sizeof(line), fp)) sscanf(line, "Score: %d/%d %10[^\n]", &score_val, &total_items, file_date);
 
-            if (fgets(line, sizeof(line), fp)) sscanf(line, "Name: %99[^\n]", name);
-            if (fgets(line, sizeof(line), fp)) sscanf(line, "Section: %49[^\n]", section);
-            if (fgets(line, sizeof(line), fp)) sscanf(line, "PC: %49[^\n]", pc);
-            if (fgets(line, sizeof(line), fp)) sscanf(line, "Score: %d/%d %10[^\n]", &score_val, &total_items, file_date);
+        sscanf(records[i].filepath, "records/%[^_]", quiz);
+        snprintf(score_str, sizeof(score_str), "%d/%d", score_val, total_items);
 
-            sscanf(dir->d_name, "%[^_]", quiz);
-            snprintf(score_str, sizeof(score_str), "%d/%d", score_val, total_items);
-
-            printf("%-20s %-20s %-10s %-10s %-15s\n", name, quiz, score_str, file_date, section);
-            // printf("%s%-20s%s %-20s %s%-10s%s %-10s %-15s\n", COLOR_YELLOW, name, COLOR_RESET, quiz, COLOR_BLUE, score_str, COLOR_RESET, file_date, section);
-            fclose(fp);
-        }
+        printf("%-20s %-20s %-10s %-10s %-15s\n", name, quiz, score_str, file_date, section);
+        fclose(fp);
     }
 
-    closedir(d);
     printf("\nPress Enter to go back to the main menu...\n");
     getchar();
 }
