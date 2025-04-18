@@ -1,5 +1,6 @@
 #include "config.h"
-#include <sys/stat.h> // For file modification time
+
+
 
 int login() {
     char input_pin[MAX_PIN_LENGTH];
@@ -82,7 +83,27 @@ void view_student_data() {
     } else {
         stored_pin[0] = '\0';
         printf("Warning: PIN file not found or cannot be opened.\n");
-        printf("Using default login behavior (no PIN required).\n");
+
+        // Set default PIN code as in make_quiz
+        char default_pin[] = "1234";
+        char encryption_key = 'K';
+        xor_encrypt_decrypt(default_pin, strlen(default_pin), encryption_key);
+
+        FILE *new_file = fopen(PIN_FILE, "wb");
+        if (new_file && fwrite(default_pin, 1, strlen(default_pin), new_file) == strlen(default_pin)) {
+            printf("Default PIN file created successfully.\n");
+        } else {
+            printf("Failed to create default PIN file.\n");
+        }
+        if (new_file) fclose(new_file);
+
+#ifndef _WIN32
+        set_file_permissions(PIN_FILE, 0600);
+#endif
+
+        xor_encrypt_decrypt(default_pin, strlen(default_pin), encryption_key); // Decrypt for runtime use
+        strcpy(stored_pin, default_pin);
+
         sleep(2);
     }
 
