@@ -1,5 +1,11 @@
 #include "config.h"
 
+void encrypt_decrypt_xor(char *data, size_t length, char key) {
+    for (size_t i = 0; i < length; i++) {
+        data[i] ^= key;
+    }
+}
+
 void make_quiz_menu() {
     if (!login_make_quiz()) return;
 
@@ -47,7 +53,7 @@ int login_make_quiz() {
         if (bytes_read > 0) {
             stored_pin_encrypted[bytes_read] = '\0';
             strcpy(stored_pin, stored_pin_encrypted);
-            xor_encrypt_decrypt(stored_pin, bytes_read, encryption_key);
+            encrypt_decrypt_xor(stored_pin, bytes_read, encryption_key);
         } else {
             printf("%sPIN file is corrupted.%s\n", COLOR_RED, COLOR_RESET);
             return 0;
@@ -55,7 +61,7 @@ int login_make_quiz() {
     } else {
         // Create default PIN if file doesn't exist
         char default_pin[] = "1234";
-        xor_encrypt_decrypt(default_pin, strlen(default_pin), encryption_key);
+        encrypt_decrypt_xor(default_pin, strlen(default_pin), encryption_key);
         FILE *new_file = fopen(PIN_FILE, "wb");
         if (!new_file || fwrite(default_pin, 1, strlen(default_pin), new_file) < strlen(default_pin)) {
             perror("Failed to create default PIN file");
@@ -107,7 +113,7 @@ void change_pin() {
     if (fgets(new_pin, MAX_PIN_LENGTH, stdin)) {
         printf("%s", COLOR_RESET);
         new_pin[strcspn(new_pin, "\n")] = '\0';
-        xor_encrypt_decrypt(new_pin, strlen(new_pin), encryption_key);
+        encrypt_decrypt_xor(new_pin, strlen(new_pin), encryption_key);
 
         FILE *pin_file = fopen(PIN_FILE, "wb");
         if (pin_file && fwrite(new_pin, 1, strlen(new_pin), pin_file)) {
@@ -132,6 +138,7 @@ void change_pin() {
 void create_new_quiz() {
     char filename[100], input[100];
     int num_items, duration;
+    char encryption_key = 'Q';
 
     printf("Enter quiz file name: ");
     if (!fgets(filename, sizeof(filename), stdin)) return;
@@ -189,17 +196,28 @@ void create_new_quiz() {
         correct_answers[i] = input[0]; // Store the single character answer
     }
 
-    FILE *fp = fopen(full_filename, "w");
+    FILE *fp = fopen(full_filename, "wb");
     if (!fp) {
         perror("Failed to create quiz file");
         return;
     }
 
-    fprintf(fp, "%d\n%d\n", duration, num_items);
-    for (int i = 0; i < num_items; i++) {
-        fprintf(fp, "%c", correct_answers[i]);
+    // Prepare data for encryption
+    char quiz_data[256];
+    snprintf(quiz_data, sizeof(quiz_data), "%d\n%d\n", duration, num_items);
+    size_t offset = strlen(quiz_data);
+    memcpy(quiz_data + offset, correct_answers, num_items);
+    offset += num_items;
+
+    // Encrypt data
+    encrypt_decrypt_xor(quiz_data, offset, encryption_key);
+
+    // Write encrypted data to file
+    if (fwrite(quiz_data, 1, offset, fp) != offset) {
+        perror("Failed to write quiz file");
+        fclose(fp);
+        return;
     }
-    fprintf(fp, "\n");
     fclose(fp);
 
     printf("Save quiz?\n[1] Yes\n[2] No\nChoice: ");
@@ -214,14 +232,13 @@ void create_new_quiz() {
 }
 
 
-
-
 /* EDIT EXISTING QUIZ */
 void edit_existing_quiz() {
     DIR *dir;
     struct dirent *entry;
     char filenames[100][128];
     int file_count = 0, choice;
+    char encryption_key = 'Q';
 
     // Open quizzes directory
     if ((dir = opendir("quizzes")) == NULL) {
@@ -278,21 +295,30 @@ void edit_existing_quiz() {
         return;
     }
 
-    FILE *quiz_file = fopen(selected_file, "r");
+    FILE *quiz_file = fopen(selected_file, "rb");
     if (!quiz_file) {
         printf("Quiz file not found.\n");
         sleep(1);
         return;
     }
 
-    // Read existing quiz details
-    if (fscanf(quiz_file, "%d\n%d\n%99s", &duration, &num_items, correct_answers) != 3) {
+    // Read and decrypt quiz data
+    char quiz_data[256];
+    size_t bytes_read = fread(quiz_data, 1, sizeof(quiz_data), quiz_file);
+    fclose(quiz_file);
+
+    if (bytes_read == 0) {
         printf("%sFailed to read quiz file or file is corrupted.%s\n", COLOR_RED, COLOR_RESET);
-        fclose(quiz_file);
         sleep(1);
         return;
     }
-    fclose(quiz_file);
+
+    encrypt_decrypt_xor(quiz_data, bytes_read, encryption_key);
+
+    // Parse decrypted data
+    sscanf(quiz_data, "%d\n%d\n", &duration, &num_items);
+    size_t offset = strlen(quiz_data) - num_items;
+    memcpy(correct_answers, quiz_data + offset, num_items);
 
     printf("Current duration: %d minutes\n", duration);
     printf("Current number of items: %d\n", num_items);
@@ -342,13 +368,25 @@ void edit_existing_quiz() {
     }
 
     // Save updated quiz
-    quiz_file = fopen(selected_file, "w");
+    quiz_file = fopen(selected_file, "wb");
     if (!quiz_file) {
         perror("Failed to save quiz file\n");
         return;
     }
 
-    fprintf(quiz_file, "%d\n%d\n%s\n", duration, num_items, correct_answers);
+    // Prepare data for encryption
+    snprintf(quiz_data, sizeof(quiz_data), "%d\n%d\n", duration, num_items);
+    offset = strlen(quiz_data);
+    memcpy(quiz_data + offset, correct_answers, num_items);
+    offset += num_items;
+
+    // Encrypt data
+    encrypt_decrypt_xor(quiz_data, offset, encryption_key);
+
+    // Write encrypted data to file
+    if (fwrite(quiz_data, 1, offset, quiz_file) != offset) {
+        perror("Failed to write quiz file");
+    }
     fclose(quiz_file);
 
     printf("Quiz updated successfully.\n");
