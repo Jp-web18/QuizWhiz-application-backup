@@ -125,9 +125,9 @@ int main() {
         printf("%s====================================%s\n", COLOR_LIGHT_PURPLE, COLOR_RESET);
         printf("%s   WELCOME TO THE QUIZWHIZ SYSTEM%s\n", COLOR_YELLOW, COLOR_RESET);
         printf("%s====================================%s\n", COLOR_LIGHT_PURPLE, COLOR_RESET);
-        printf("%s[1]%s Make a Quiz\n", COLOR_YELLOW, COLOR_RESET); 
-        printf("%s[2]%s View student's data\n", COLOR_YELLOW, COLOR_RESET);
-        printf("%s[3]%s View and Take Quizes\n", COLOR_YELLOW, COLOR_RESET);
+        printf("%s[1] %sMake a Quiz%s\n", COLOR_YELLOW, COLOR_CYAN, COLOR_RESET); 
+        printf("%s[2] %sView Student's Data%s\n", COLOR_YELLOW, COLOR_CYAN, COLOR_RESET);
+        printf("%s[3] %sView and Take Quizzes%s\n", COLOR_YELLOW, COLOR_CYAN, COLOR_RESET);
         printf("%s[4] Exit the system%s\n", COLOR_RED, COLOR_RESET);
         printf("%s------------------------------------%s\n", COLOR_LIGHT_PURPLE, COLOR_RESET);
         printf("%sEnter your choice:%s ", COLOR_CYAN, COLOR_RESET);

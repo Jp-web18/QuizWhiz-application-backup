@@ -9,7 +9,10 @@ void make_quiz_menu() {
     while (1) {
         system(CLEAR);
         printf("%sMake a quiz%s\n\n%s", COLOR_YELLOW, COLOR_RESET, COLOR_BLUE);
-        printf("[1] Make another quiz\n[2] Edit existing quizzes\n[3] Change PIN\n[4] Back to main menu\n\n%s", COLOR_RESET);
+        printf("%s[1] %sMake a Quiz%s\n", COLOR_YELLOW, COLOR_CYAN, COLOR_RESET);
+        printf("%s[2] %sEdit Existing Quizzes%s\n", COLOR_YELLOW, COLOR_CYAN, COLOR_RESET);
+        printf("%s[3] %sChange PIN%s\n", COLOR_YELLOW, COLOR_CYAN, COLOR_RESET);
+        printf("%s[4] %sBack to Main Menu%s\n\n", COLOR_YELLOW, COLOR_LIGHT_PURPLE, COLOR_RESET);
         printf("Enter your choice: %s", COLOR_CYAN);
 
         if (fgets(input, sizeof(input), stdin)) {

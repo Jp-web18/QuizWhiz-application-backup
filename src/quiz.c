@@ -12,17 +12,18 @@ retry_input:
 
     d = opendir("quizzes");
     if (d) {
-        printf("Available Quizzes:\n\n");
+        printf("%sAvailable Quizzes:%s\n\n", COLOR_YELLOW, COLOR_RESET);
+        
         while ((dir = readdir(d)) != NULL) {
             if (strstr(dir->d_name, ".quiz")) {
-                printf("[%d] %s\n", ++quiz_count, dir->d_name);
+                printf("%d. %s\n", ++quiz_count, dir->d_name);
             }
         }
         closedir(d);
     }
 
     if (quiz_count == 0) {
-        printf("No quizzes made yet.\n");
+        printf("%sNo quizzes made yet.%s\n", COLOR_RED, COLOR_RESET);
 #ifdef _WIN32
         Sleep(2000);
 #else
@@ -33,7 +34,9 @@ retry_input:
 
     char input[10];
     int choice;
-    printf("\n[1] Take a quiz\n[2] Back to main menu\nEnter your choice: ");
+    printf("\n%s[1]%s %sTake a quiz%s\n", COLOR_YELLOW, COLOR_RESET, COLOR_CYAN, COLOR_RESET);
+    printf("%s[2]%s %sBack to main menu%s\n", COLOR_YELLOW, COLOR_RESET, COLOR_LIGHT_PURPLE, COLOR_RESET);
+    printf("%sEnter your choice:%s ", COLOR_CYAN, COLOR_RESET);
 
     if (fgets(input, sizeof(input), stdin) == NULL || input[0] == '\n') {
         printf("%sInvalid input. Please press 1 or 2.%s\n", COLOR_RED, COLOR_RESET);
@@ -73,12 +76,12 @@ void take_quiz() {
 
     d = opendir("quizzes");
     if (!d) {
-        printf("Quiz directory not found.\n");
+        printf("%sQuiz directory not found.%s\n", COLOR_RED, COLOR_RESET);
         sleep(2);
         return;
     }
 
-    printf("Available Quizzes:\n\n");
+    printf("%sAvailable Quizzes:%s\n\n", COLOR_YELLOW, COLOR_RESET);
     while ((dir = readdir(d)) != NULL) {
         if (strstr(dir->d_name, ".quiz")) {
             printf("[%d] %s\n", ++quiz_count, dir->d_name);
@@ -88,7 +91,7 @@ void take_quiz() {
     closedir(d);
 
     if (quiz_count == 0) {
-        printf("No quizzes available.\n");
+        printf("%sNo quizzes available.%s\n", COLOR_RED, COLOR_RESET);
         sleep(2);
         return;
     }
@@ -96,7 +99,7 @@ void take_quiz() {
     char input[16];
     int selection = -1;
     while (1) {
-        printf("\nEnter the number of the quiz you want to take: ");
+        printf("\n%sEnter the number of the quiz you want to take:%s ", COLOR_CYAN, COLOR_RESET);
         if (!fgets(input, sizeof(input), stdin) || input[0] == '\n') {
             printf("%sInvalid input.%s\n", COLOR_RED, COLOR_RESET);
             continue;
@@ -127,19 +130,19 @@ void take_quiz() {
     fscanf(fp, "%d\n%d\n%s", &duration, &items, correct_answers);
     fclose(fp);
 
-    printf("Time Duration: %d minutes\n", duration);
+    printf("%sTime Duration:%s %d minutes\n", COLOR_YELLOW, COLOR_RESET, duration);
 
     char student_name[100], section[20], pc_number[10], submission_date[11];
 
-    printf("Enter your name: ");
+    printf("%sEnter your name:%s ", COLOR_CYAN, COLOR_RESET);
     fgets(student_name, sizeof(student_name), stdin);
     student_name[strcspn(student_name, "\n")] = '\0';
 
-    printf("Enter your section code: ");
+    printf("%sEnter your section code:%s ", COLOR_CYAN, COLOR_RESET);
     fgets(section, sizeof(section), stdin);
     section[strcspn(section, "\n")] = '\0';
 
-    printf("Enter your PC number: ");
+    printf("%sEnter your PC number:%s ", COLOR_CYAN, COLOR_RESET);
     fgets(pc_number, sizeof(pc_number), stdin);
     pc_number[strcspn(pc_number, "\n")] = '\0';
 
@@ -147,13 +150,13 @@ void take_quiz() {
     snprintf(record_file, sizeof(record_file), "records/%s_%s.rec", selected_quiz, student_name);
 
     if (file_exists(record_file)) {
-        printf("You have already taken this quiz with the same name. Not allowed to take twice.\n");
+        printf("%sYou have already taken this quiz with the same name. Not allowed to take twice.%s\n", COLOR_RED, COLOR_RESET);
         sleep(2);
         return;
     }
 
-    printf("The quiz will start now. You have %d minutes to complete it.\n", duration);
-    printf("Press ENTER to begin...");
+    printf("%sThe quiz will start now. You have %d minutes to complete it.%s\n", COLOR_YELLOW, duration, COLOR_RESET);
+    printf("%sPress ENTER to begin...%s", COLOR_CYAN, COLOR_RESET);
     fgets(input, sizeof(input), stdin);
 
     time_t start_time = time(NULL);
@@ -162,7 +165,7 @@ void take_quiz() {
     for (int i = 0; i < items; i++) {
         time_t current_time = time(NULL);
         if (current_time >= end_time) {
-            printf("\nTime is up! Submitting your answers...\n");
+            printf("\n%sTime is up! Submitting your answers...%s\n", COLOR_RED, COLOR_RESET);
             break;
         }
 
@@ -174,11 +177,11 @@ void take_quiz() {
     user_answers[items] = '\0';
 
     if (time(NULL) >= end_time) {
-        printf("\nTime is up! Your quiz has been automatically submitted.\n");
+        printf("\n%sTime is up! Your quiz has been automatically submitted.%s\n", COLOR_RED, COLOR_RESET);
     } else {
         int confirmed = 0;
         while (1) {
-            printf("Are you finished answering the quiz? [1] Yes [2] No: ");
+            printf("Are you finished answering the quiz? %s[1] Yes%s %s[2] No:%s ", COLOR_YELLOW, COLOR_RESET, COLOR_YELLOW, COLOR_RESET);
             if (!fgets(input, sizeof(input), stdin) || input[0] == '\n') {
                 printf("%sInvalid input.%s\n", COLOR_RED, COLOR_RESET);
                 continue;
@@ -218,7 +221,7 @@ void take_quiz() {
     fclose(rec);
     chmod(record_file, 0444);
 
-    printf("Quiz submitted. Score: %d/%d (%.2f%%) on %s\n", score, items, percentage, submission_date);
-    printf("\nPress ENTER to return to the main menu...");
+    printf("%sQuiz submitted. Score:%s %d/%d (%.2f%%) on %s\n", COLOR_GREEN, COLOR_RESET, score, items, percentage, submission_date);
+    printf("\n%sPress ENTER to return to the main menu...%s", COLOR_CYAN, COLOR_RESET);
     fgets(input, sizeof(input), stdin); // Wait for ENTER
 }
