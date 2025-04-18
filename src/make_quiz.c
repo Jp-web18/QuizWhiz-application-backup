@@ -13,7 +13,8 @@ void make_quiz_menu() {
         printf("%s[2] %sEdit Existing Quizzes%s\n", COLOR_YELLOW, COLOR_CYAN, COLOR_RESET);
         printf("%s[3] %sChange PIN%s\n", COLOR_YELLOW, COLOR_CYAN, COLOR_RESET);
         printf("%s[4] %sBack to Main Menu%s\n\n", COLOR_YELLOW, COLOR_LIGHT_PURPLE, COLOR_RESET);
-        printf("Enter your choice: %s", COLOR_CYAN);
+        printf("%sEnter your choice:%s ", COLOR_CYAN, COLOR_RESET);
+        printf("%s", BOLD_WHITE);
 
         if (fgets(input, sizeof(input), stdin)) {
             choice = atoi(input);
@@ -310,15 +311,34 @@ void edit_existing_quiz() {
         num_items = atoi(input);
     }
 
-    printf("Enter new correct answers (no spaces, %d characters) or press Enter to keep current: ", num_items);
-    if (fgets(input, sizeof(input), stdin) && input[0] != '\n') {
-        input[strcspn(input, "\n")] = '\0';
-        if ((int)strlen(input) != num_items) {
-            printf("%sMismatch: number of answers must equal number of items.%s\n", COLOR_RED, COLOR_RESET);
-            sleep(1);
-            return;
+    while (1) {
+        printf("Enter new correct answers for each item or press Enter to keep current:\n");
+        for (int i = 0; i < num_items; i++) {
+            printf("Item %d (current: %c): ", i + 1, correct_answers[i]);
+            if (fgets(input, sizeof(input), stdin) && input[0] != '\n') {
+                input[strcspn(input, "\n")] = '\0';
+                if (strlen(input) != 1) {
+                    printf("%sInvalid input. Each answer must be a single character.%s\n", COLOR_RED, COLOR_RESET);
+                    i--; // Retry the current item
+                    continue;
+                }
+                correct_answers[i] = input[0];
+            }
         }
-        strcpy(correct_answers, input);
+
+        printf("%sAre you finished editing the quiz?%s\n", COLOR_YELLOW, COLOR_RESET);
+        printf("%s[1] %sYes%s\n", COLOR_YELLOW, COLOR_CYAN, COLOR_RESET);
+        printf("%s[2] %sNo%s\n", COLOR_YELLOW, COLOR_CYAN, COLOR_RESET);
+        printf("%s[3] %sBack to Make Quiz Menu%s\n", COLOR_YELLOW, COLOR_LIGHT_PURPLE, COLOR_RESET);
+        printf("%sEnter your choice:%s ", COLOR_CYAN, COLOR_RESET);
+        if (fgets(input, sizeof(input), stdin)) {
+            int option = atoi(input);
+            if (option == 1) {
+                break;
+            } else if (option == 3) {
+                return;
+            }
+        }
     }
 
     // Save updated quiz
