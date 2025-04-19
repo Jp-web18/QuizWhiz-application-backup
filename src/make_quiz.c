@@ -310,16 +310,25 @@ void edit_existing_quiz() {
         num_items = atoi(input);
     }
 
-    printf("Enter new correct answers (no spaces, %d characters) or press Enter to keep current: ", num_items);
-    if (fgets(input, sizeof(input), stdin) && input[0] != '\n') {
-        input[strcspn(input, "\n")] = '\0';
-        if ((int)strlen(input) != num_items) {
-            printf("%sMismatch: number of answers must equal number of items.%s\n", COLOR_RED, COLOR_RESET);
+    printf("Enter new correct answers (one per line, %d items) or press Enter to keep current:\n", num_items);
+    for (int i = 0; i < num_items; i++) {
+        printf("Answer for item %d (current: %c): ", i + 1, correct_answers[i]);
+        if (fgets(input, sizeof(input), stdin) && input[0] != '\n') {
+            input[strcspn(input, "\n")] = '\0';
+            if (strlen(input) != 1) {
+                printf("%sInvalid input. Each answer must be a single character.%s\n", COLOR_RED, COLOR_RESET);
+                sleep(1);
+                i--; // Retry the current item
+                continue;
+            }
+            correct_answers[i] = input[0];
+        } else {
+            printf("%sInvalid input. Aborting update.%s\n", COLOR_RED, COLOR_RESET);
             sleep(1);
             return;
         }
-        strcpy(correct_answers, input);
     }
+    correct_answers[num_items] = '\0'; // Null-terminate the string
 
     // Save updated quiz
     quiz_file = fopen(selected_file, "w");
