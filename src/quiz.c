@@ -260,8 +260,6 @@ void take_quiz() {
     for (int i = 0; i < items; i++) {
         if (tolower(user_answers[i]) == tolower(correct_answers[i])) { // Case-insensitive comparison
             score++;
-        } else {
-            printf("Debug: Mismatch at item %d: user='%c', correct='%c'\n", i + 1, user_answers[i], correct_answers[i]); // Debugging output
         }
     }
 
