@@ -17,6 +17,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <windows.h>
+#include <ctype.h> // Include for tolower function
 
 
 /* DEVELOPER HEADEARS */

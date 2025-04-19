@@ -1,6 +1,7 @@
 #include "config.h"
 
 
+
 void view_take_quizzes() {
     DIR *d;
     struct dirent *dir;
@@ -65,14 +66,12 @@ retry_input:
     }
 }
 
-
-
-
 void take_quiz() {
     DIR *d;
     struct dirent *dir;
     char *quiz_files[100];
     int quiz_count = 0;
+    char encryption_key = 'Q';
 
     d = opendir("quizzes");
     if (!d) {
@@ -119,32 +118,78 @@ void take_quiz() {
     char filename[128];
     snprintf(filename, sizeof(filename), "quizzes/%s", selected_quiz);
 
-    FILE *fp = fopen(filename, "r");
+    FILE *fp = fopen(filename, "rb");
     if (!fp) {
         perror("Unable to open quiz");
         return;
     }
 
-    int duration, items, score = 0;
-    char correct_answers[100], user_answers[100];
-    fscanf(fp, "%d\n%d\n%s", &duration, &items, correct_answers);
+    // Read and decrypt quiz data
+    char quiz_data[256];
+    size_t bytes_read = fread(quiz_data, 1, sizeof(quiz_data), fp);
     fclose(fp);
+
+    if (bytes_read == 0) {
+        printf("%sFailed to read quiz file or file is corrupted.%s\n", COLOR_RED, COLOR_RESET);
+        sleep(2);
+        return;
+    }
+
+    encrypt_decrypt_xor(quiz_data, bytes_read, encryption_key);
+
+    // Parse decrypted data
+    int duration, items;
+    char correct_answers[100];
+    char *quiz_data_ptr = quiz_data; // Pointer to traverse quiz_data
+
+    // Extract duration and number of items
+    if (sscanf(quiz_data_ptr, "%d\n%d\n", &duration, &items) != 2) {
+        printf("%sFailed to parse quiz metadata. File may be corrupted.%s\n", COLOR_RED, COLOR_RESET);
+        return;
+    }
+
+    // Move pointer to the start of the correct answers
+    quiz_data_ptr = strchr(quiz_data_ptr, '\n') + 1; // Skip duration line
+    quiz_data_ptr = strchr(quiz_data_ptr, '\n') + 1; // Skip items line
+
+    // Copy correct answers
+    strncpy(correct_answers, quiz_data_ptr, items);
+    correct_answers[items] = '\0'; // Ensure null-termination
 
     printf("%sTime Duration:%s %d minutes\n", COLOR_YELLOW, COLOR_RESET, duration);
 
     char student_name[100], section[20], pc_number[10], submission_date[11];
 
-    printf("%sEnter your name:%s ", COLOR_CYAN, COLOR_RESET);
-    fgets(student_name, sizeof(student_name), stdin);
-    student_name[strcspn(student_name, "\n")] = '\0';
+    while (1) {
+        printf("%sEnter your name:%s ", COLOR_CYAN, COLOR_RESET);
+        fgets(student_name, sizeof(student_name), stdin);
+        student_name[strcspn(student_name, "\n")] = '\0';
 
-    printf("%sEnter your section code:%s ", COLOR_CYAN, COLOR_RESET);
-    fgets(section, sizeof(section), stdin);
-    section[strcspn(section, "\n")] = '\0';
+        printf("%sEnter your section code:%s ", COLOR_CYAN, COLOR_RESET);
+        fgets(section, sizeof(section), stdin);
+        section[strcspn(section, "\n")] = '\0';
 
-    printf("%sEnter your PC number:%s ", COLOR_CYAN, COLOR_RESET);
-    fgets(pc_number, sizeof(pc_number), stdin);
-    pc_number[strcspn(pc_number, "\n")] = '\0';
+        printf("%sEnter your PC number:%s ", COLOR_CYAN, COLOR_RESET);
+        fgets(pc_number, sizeof(pc_number), stdin);
+        pc_number[strcspn(pc_number, "\n")] = '\0';
+
+        printf("\n%sPlease confirm your information:%s\n", COLOR_YELLOW, COLOR_RESET);
+        printf("%sName:%s %s\n", COLOR_CYAN, COLOR_RESET, student_name);
+        printf("%sSection:%s %s\n", COLOR_CYAN, COLOR_RESET, section);
+        printf("%sPC Number:%s %s\n", COLOR_CYAN, COLOR_RESET, pc_number);
+        printf("\n%sIs this information correct?%s\n", COLOR_YELLOW, COLOR_RESET);
+        printf("%s[1] Yes%s\n", COLOR_GREEN, COLOR_RESET);
+        printf("%s[2] No%s\n", COLOR_RED, COLOR_RESET);
+        printf("%sEnter your choice:%s ", COLOR_CYAN, COLOR_RESET);
+
+        if (fgets(input, sizeof(input), stdin)) {
+            int choice = atoi(input);
+            if (choice == 1) break;
+            if (choice == 2) continue;
+        }
+
+        printf("%sInvalid input. Please try again.%s\n", COLOR_RED, COLOR_RESET);
+    }
 
     char record_file[128];
     snprintf(record_file, sizeof(record_file), "records/%s_%s.rec", selected_quiz, student_name);
@@ -162,6 +207,7 @@ void take_quiz() {
     time_t start_time = time(NULL);
     time_t end_time = start_time + (duration * 60);
 
+    char user_answers[100];
     for (int i = 0; i < items; i++) {
         time_t current_time = time(NULL);
         if (current_time >= end_time) {
@@ -171,10 +217,20 @@ void take_quiz() {
 
         printf("Question #%d answer: ", i + 1);
         char ans_input[4];
-        fgets(ans_input, sizeof(ans_input), stdin);
-        user_answers[i] = ans_input[0];
+        if (fgets(ans_input, sizeof(ans_input), stdin)) {
+            ans_input[strcspn(ans_input, "\n")] = '\0'; // Remove newline
+            if (strlen(ans_input) != 1) {
+                printf("%sInvalid input. Each answer must be a single character.%s\n", COLOR_RED, COLOR_RESET);
+                i--; // Retry the current question
+                continue;
+            }
+            user_answers[i] = ans_input[0]; // Store the single character answer
+        } else {
+            printf("%sInvalid input. Skipping question.%s\n", COLOR_RED, COLOR_RESET);
+            user_answers[i] = ' '; // Default to a blank answer
+        }
     }
-    user_answers[items] = '\0';
+    user_answers[items] = '\0'; // Ensure user_answers is null-terminated
 
     if (time(NULL) >= end_time) {
         printf("\n%sTime is up! Your quiz has been automatically submitted.%s\n", COLOR_RED, COLOR_RESET);
@@ -200,8 +256,13 @@ void take_quiz() {
         if (confirmed != 1) return;
     }
 
+    int score = 0;
     for (int i = 0; i < items; i++) {
-        if (user_answers[i] == correct_answers[i]) score++;
+        if (tolower(user_answers[i]) == tolower(correct_answers[i])) { // Case-insensitive comparison
+            score++;
+        } else {
+            printf("Debug: Mismatch at item %d: user='%c', correct='%c'\n", i + 1, user_answers[i], correct_answers[i]); // Debugging output
+        }
     }
 
     float percentage = ((float)score / items) * 100;
