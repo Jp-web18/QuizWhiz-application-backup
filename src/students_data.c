@@ -1,6 +1,13 @@
 #include "config.h"
 
 
+void clear_stdin_buffer() {
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF);
+}
+
+
+
 
 int login() {
     char input_pin[MAX_PIN_LENGTH];
@@ -34,7 +41,12 @@ int login() {
         return 0;
     }
 
-    printf("%student Data%s\n\n", COLOR_YELLOW, COLOR_RESET);
+    // printf("%student Data%s\n\n", COLOR_YELLOW, COLOR_RESET);
+    printf("%s----------------------------------------------------------%s\n", COLOR_LIGHT_PURPLE, COLOR_RESET);
+    printf("%s                     Students Data\n", COLOR_YELLOW);
+    printf("%s----------------------------------------------------------%s\n", COLOR_LIGHT_PURPLE, COLOR_RESET);
+    printf("\n");
+
     while (attempts < MAX_LOGIN_ATTEMPTS) {
         printf("Enter your PIN: ");
         if (fgets(input_pin, MAX_PIN_LENGTH, stdin) != NULL) {
@@ -108,8 +120,14 @@ void view_student_data() {
     }
 
     while (attempts < MAX_LOGIN_ATTEMPTS) {
-        printf("%sStudent Data%s\n\n", COLOR_YELLOW, COLOR_RESET);
-        printf("Enter PIN to view student data: ");
+        // printf("%sStudent Data%s\n\n", COLOR_YELLOW, COLOR_RESET);
+        printf("%s----------------------------------------------------------%s\n", COLOR_LIGHT_PURPLE, COLOR_RESET);
+        printf("%s                     Students Data\n", COLOR_YELLOW);
+        printf("%s----------------------------------------------------------%s\n", COLOR_LIGHT_PURPLE, COLOR_RESET);
+        printf("\n");
+
+        // printf("Enter PIN to view student data: ");
+        printf("%sEnter PIN code: %s", COLOR_CYAN, COLOR_WHITE);
         if (fgets(entered_pin, MAX_PIN_LENGTH, stdin) != NULL) {
             size_t len = strlen(entered_pin);
             if (len > 0 && entered_pin[len - 1] == '\n') {
@@ -188,39 +206,134 @@ void view_student_data() {
         }
     }
 
-    printf("%s%-20s%s %s%-20s%s %s%-10s%s %-10s %s%-15s%s\n", 
-           COLOR_YELLOW, "Student Name", COLOR_RESET, 
-           COLOR_MAGENTA, "Quiz Name", COLOR_RESET, 
-           COLOR_BLUE, "Score", COLOR_RESET, 
-           "Date", 
-           COLOR_GREEN, "Section", COLOR_RESET);
-    printf("-------------------- -------------------- ---------- ---------- ---------------\n");
+    printf("%s-------------------------------------------------------------------------------------------------%s\n", COLOR_LIGHT_PURPLE, COLOR_RESET);
+    printf("%sSTUDENT DATA\tSTUDENT DATA\tSTUDENT DATA\tSTUDENT DATA\tSTUDENT DATA\tSTUDENT DATA\t\n", COLOR_YELLOW);
+    printf("%s-------------------------------------------------------------------------------------------------%s\n", COLOR_LIGHT_PURPLE, COLOR_RESET);
+    printf("\n");
 
+    printf("%sTotal Students Who Took the Quiz:\t%s%d%s\n\n", COLOR_CYAN, COLOR_WHITE, record_count, COLOR_RESET);
+
+    printf("%s%-4s  %-30s  %-12s  %-18s  %-15s  %-8s%s\n",
+        COLOR_YELLOW, "No.", "Student Name", "Section", "Quiz Name", "Date", "Score", COLOR_RESET);
+    printf("----  ------------------------------  ------------  ------------------  ---------------  --------\n");
+ 
     for (int i = 0; i < record_count; i++) {
         FILE *fp = fopen(records[i].filepath, "r");
         if (!fp) continue;
 
         char line[100];
-        char name[100] = "";
-        char section[50] = "";
-        char pc[50] = "";
-        char score_str[20] = "";
-        char file_date[11] = "";
-        char quiz[50] = "";
-        int score_val, total_items;
+        char name[100] = "N/A"; // Default to "N/A" if missing
+        char section[50] = "N/A"; // Default to "N/A" if missing
+        char pc[50] = "N/A"; // Default to "N/A" if missing
+        char score_str[20] = "0/0"; // Default to "0/0" if missing
+        char file_date[20] = "N/A"; // Default to "N/A" if missing
+        char quiz[50] = "N/A"; // Default to "N/A" if missing
+        int score_val = 0, total_items = 0;
 
-        if (fgets(line, sizeof(line), fp)) sscanf(line, "Name: %99[^\n]", name);
-        if (fgets(line, sizeof(line), fp)) sscanf(line, "Section: %49[^\n]", section);
-        if (fgets(line, sizeof(line), fp)) sscanf(line, "PC: %49[^\n]", pc);
-        if (fgets(line, sizeof(line), fp)) sscanf(line, "Score: %d/%d %10[^\n]", &score_val, &total_items, file_date);
+        // Parse each line of the record file
+        if (fgets(line, sizeof(line), fp)) sscanf(line, "Name    : %99[^\n]", name);
+        if (fgets(line, sizeof(line), fp)) sscanf(line, "Section : %49[^\n]", section);
+        if (fgets(line, sizeof(line), fp)) sscanf(line, "PC      : %49[^\n]", pc);
+        if (fgets(line, sizeof(line), fp)) sscanf(line, "Score   : %d/%d", &score_val, &total_items);
+        if (fgets(line, sizeof(line), fp)) sscanf(line, "Date    : %19[^\n]", file_date);
 
         sscanf(records[i].filepath, "records/%[^_]", quiz);
         snprintf(score_str, sizeof(score_str), "%d/%d", score_val, total_items);
 
-        printf("%-20s %-20s %-10s %-10s %-15s\n", name, quiz, score_str, file_date, section);
+        // Display the parsed data
+        printf("%-4d  %-30s  %-12s  %-18s  %-15s  %-8s\n", i + 1, name, section, quiz, file_date, score_str);
         fclose(fp);
     }
 
-    printf("\nPress Enter to go back to the main menu...\n");
+    char input_buffer[100];
+
+    while (1) {
+        printf("%s\nWould you like to view detailed information for a specific student? (y/n): %s", COLOR_CYAN, COLOR_WHITE);
+        if (!fgets(input_buffer, sizeof(input_buffer), stdin)) {
+            printf("%sInput error. Please try again.%s\n", COLOR_RED, COLOR_RESET);
+            continue;
+        }
+    
+        // Remove trailing newline and clear buffer if needed
+        if (strchr(input_buffer, '\n') == NULL)
+            clear_stdin_buffer();
+        input_buffer[strcspn(input_buffer, "\n")] = '\0';
+    
+        if (strlen(input_buffer) == 1 && (input_buffer[0] == 'y' || input_buffer[0] == 'Y')) {
+            printf("%sEnter the number of the student (1 to %d): %s", COLOR_CYAN, record_count, COLOR_WHITE);
+    
+            if (!fgets(input_buffer, sizeof(input_buffer), stdin)) {
+                printf("%sInput error. Please try again.%s\n", COLOR_RED, COLOR_RESET);
+                continue;
+            }
+    
+            if (strchr(input_buffer, '\n') == NULL)
+                clear_stdin_buffer();
+            input_buffer[strcspn(input_buffer, "\n")] = '\0';
+    
+            int student_number = atoi(input_buffer);
+            if (student_number < 1 || student_number > record_count) {
+                printf("%sInvalid student number. Please enter a number between 1 and %d.%s\n", COLOR_RED, record_count, COLOR_RESET);
+                continue;
+            }
+    
+            FILE *fp = fopen(records[student_number - 1].filepath, "r");
+            if (fp) {
+                char student_name[100] = "N/A"; // Default to "N/A" if missing
+                char line[100]; // Declare the line variable
+                rewind(fp); // Reset file pointer to read the name
+                if (fgets(line, sizeof(line), fp)) sscanf(line, "Name    : %[^\n]", student_name); // Adjusted format string
+
+                printf("\n%sDetailed Information for Student #%d (%s):%s\n", COLOR_YELLOW, student_number, student_name, COLOR_RESET);
+                printf("%s----------------------------------------------------------%s\n", COLOR_LIGHT_PURPLE, COLOR_RESET);
+
+                rewind(fp); // Reset file pointer to read all details
+                while (fgets(line, sizeof(line), fp)) {
+                    char key[50], value[100];
+
+                    if (strchr(line, ':') != NULL && sscanf(line, "%49[^:]: %[^\n]", key, value) == 2) {
+                        if (strcmp(key, "Score") == 0) {
+                            char score[20], date[20];
+                            if (sscanf(value, "%19s %19s", score, date) == 2) {
+                                printf("%s%-20s: %s%s\n", COLOR_CYAN, "Score", COLOR_WHITE, score);
+                                printf("%s%-20s: %s%s\n", COLOR_CYAN, "Date", COLOR_WHITE, date);
+                            } else {
+                                printf("%s%-20s: %s%s\n", COLOR_CYAN, key, COLOR_WHITE, value);
+                            }
+                        } else if (strcmp(key, "Answers") == 0) {
+                            printf("%s%-20s:%s\n", COLOR_CYAN, "Answers", COLOR_RESET);
+                            for (int i = 0; value[i] != '\0'; i++) {
+                                printf("%d. %c (Correct: %c)\n", i + 1, value[i], value[i]); // Remove extra spaces
+                            }
+                        } else if (strcmp(key, "Correct") == 0) {
+                            printf("%s%-20s:%s\n", COLOR_CYAN, "Correct", COLOR_RESET);
+                            for (int i = 0; value[i] != '\0'; i++) {
+                                printf("%d. %c (Correct: %c)\n", i + 1, value[i], value[i]); // Remove extra spaces
+                            }
+                        } else {
+                            printf("%s%-20s: %s%s\n", COLOR_CYAN, key, COLOR_WHITE, value);
+                        }
+                    } else {
+                        // Print raw lines like "1. a (Correct: a)"
+                        printf("%s", line);
+                    }
+                }
+
+                fclose(fp);
+            } else {
+                printf("%sFailed to open the record file for the selected student.%s\n", COLOR_RED, COLOR_RESET);
+            }
+    
+        } else if (strlen(input_buffer) == 1 && (input_buffer[0] == 'n' || input_buffer[0] == 'N')) {
+            break;
+        } else {
+            printf("%sInvalid choice. Please enter 'y' or 'n'.%s\n", COLOR_RED, COLOR_RESET);
+        }
+    }
+    
+    
+    
+    printf("\n\n%sPress Enter to go back to the main menu%s...\n", COLOR_GREEN, COLOR_RESET);
+    printf("%s------------------------------------------------%s\n", COLOR_LIGHT_PURPLE, COLOR_RESET);
     getchar();
 }
